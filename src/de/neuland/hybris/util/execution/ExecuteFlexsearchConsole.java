@@ -11,9 +11,10 @@ import com.intellij.openapi.ui.popup.JBPopupFactory;
 import com.intellij.openapi.wm.StatusBar;
 import com.intellij.openapi.wm.WindowManager;
 import com.intellij.ui.awt.RelativePoint;
-import de.neuland.hybris.util.application.ConsoleToolWindowUtil;
 import de.neuland.hybris.http.HybrisHTTPRequest;
 import de.neuland.hybris.http.ServerAnwserTypes;
+import de.neuland.hybris.http.helper.JSessionCsrfPair;
+import de.neuland.hybris.util.application.ConsoleToolWindowUtil;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -40,14 +41,14 @@ public class ExecuteFlexsearchConsole extends ExecuteConsole {
 
     public void execute(final String documentContent, final Project project) {
         final HybrisHTTPRequest hybrisHttpRequest = HybrisHTTPRequest.getInstance();
-        final String jSessionID = executePrepare(project);
+        final JSessionCsrfPair jSessionCsrfPair = executePrepare(project);
         try {
             startSendRequestAnimationInAllConsoles();
 
             ApplicationManager.getApplication().executeOnPooledThread(new Runnable() {
                 @Override
                 public void run() {
-                    String jsonResult = hybrisHttpRequest.executeFlexsearchScript(documentContent, jSessionID);
+                    String jsonResult = hybrisHttpRequest.executeFlexsearchScript(documentContent, jSessionCsrfPair);
                     markRequestAsFinish();
                     try {
                         JSONObject responseJson = new JSONObject(jsonResult);

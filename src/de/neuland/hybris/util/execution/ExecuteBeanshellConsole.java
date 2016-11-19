@@ -3,6 +3,7 @@ package de.neuland.hybris.util.execution;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
 import de.neuland.hybris.http.HybrisHTTPRequest;
+import de.neuland.hybris.http.helper.JSessionCsrfPair;
 
 public class ExecuteBeanshellConsole extends ExecuteScriptConsole {
 
@@ -19,8 +20,8 @@ public class ExecuteBeanshellConsole extends ExecuteScriptConsole {
 
     public void execute(final String documentContent, final Project project) {
         final HybrisHTTPRequest hybrisHttpRequest = HybrisHTTPRequest.getInstance();
-        final String jSessionID = executePrepare(project);
-        if(jSessionID == null) {
+        final JSessionCsrfPair jSessionCsrfPair = executePrepare(project);
+        if(jSessionCsrfPair == null) {
             return;
         }
         try {
@@ -28,7 +29,7 @@ public class ExecuteBeanshellConsole extends ExecuteScriptConsole {
             ApplicationManager.getApplication().executeOnPooledThread(new Runnable() {
                 @Override
                 public void run() {
-                    String jsonResult = hybrisHttpRequest.executeBeanshellScript(documentContent, jSessionID);
+                    String jsonResult = hybrisHttpRequest.executeBeanshellScript(documentContent, jSessionCsrfPair);
                     markRequestAsFinish();
                     fillConsolesWithTheResult(jsonResult);
                 }

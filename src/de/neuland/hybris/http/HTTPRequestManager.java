@@ -1,24 +1,32 @@
 package de.neuland.hybris.http;
 
+import de.neuland.hybris.http.helper.CookieParser;
+import de.neuland.hybris.http.helper.JSessionCsrfPair;
+import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
+import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
-import org.apache.http.conn.ssl.*;
-import org.apache.http.message.BasicNameValuePair;
-
+import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
+import org.apache.http.conn.ssl.SSLContexts;
+import org.apache.http.conn.ssl.TrustStrategy;
 import org.apache.http.impl.client.HttpClients;
+import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
 
 import javax.net.ssl.SSLContext;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.SocketTimeoutException;
-import java.security.cert.CertificateException;
-import java.security.cert.X509Certificate;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -47,12 +55,13 @@ public class HTTPRequestManager {
     private HTTPRequestManager() {
     }
 
-    public String doPostRequestWithCookie(String url, String cookie, List<NameValuePair> parameter) {
+    public String doPostRequestWithCookie(String url, JSessionCsrfPair jSessionCsrfPair, List<NameValuePair> parameter) {
         try {
             HttpClient client = createAllowAllClient(3600);
             HttpPost request = new HttpPost(url);
             request.setEntity(new UrlEncodedFormEntity(parameter, "UTF-8"));
-            request.setHeader("Cookie", cookie);
+            request.setHeader("Cookie", jSessionCsrfPair.getJSession());
+            request.setHeader("X-CSRF-TOKEN", jSessionCsrfPair.getCsrf());
             request.setHeader("Accept", "application/json, text/javascript, */*; q=0.01; charset=UTF-8");
             request.setHeader("Accept-Encoding", "gzip, deflate");
             request.setHeader("Accept-Charset", "UTF-8");
@@ -77,19 +86,72 @@ public class HTTPRequestManager {
         return  nameValuePairs;
     }
 
-    public String doLoginForCookie(String url, List<NameValuePair> loginData) {
+    public JSessionCsrfPair doLoginForCookie(String url, List<NameValuePair> loginData) {
         try {
+            JSessionCsrfPair jSessionCsrfPair =
+                    getJSessionAndCsrfForLogin(HybrisHTTPRequest.getInstance().getLoginPageUrl(), null);
+
             HttpClient client = createAllowAllClient();
             HttpPost request = new HttpPost(url);
             request.setEntity(new UrlEncodedFormEntity(loginData));
+            request.setHeader("Cookie", jSessionCsrfPair.getJSession());
+            request.setHeader("X-CSRF-TOKEN", jSessionCsrfPair.getCsrf());
+
             HttpResponse response = client.execute(request);
-            return response.getFirstHeader("Set-Cookie").getValue();
-        } catch (SocketTimeoutException e) {
-            e.printStackTrace();
-            return "Timeout";
+
+            String jsession = response.getFirstHeader("Set-Cookie").getValue();
+            jsession = CookieParser.getInstance().getSpecialCookie(jsession, "JSESSIONID");
+
+            return getJSessionAndCsrfForLogin(HybrisHTTPRequest.getInstance().getLoginPageUrl(), jsession);
+
         } catch (Exception e) {
-            e.printStackTrace();
-            return "Error";
+            throw new RuntimeException(e);
+        }
+    }
+
+    private JSessionCsrfPair getJSessionAndCsrfForLogin(String url, String jsession) {
+        try {
+            HttpClient client = createAllowAllClient();
+            HttpGet request = new HttpGet(url);
+
+            if (jsession != null) {
+                request.setHeader("Cookie", jsession);
+            }
+
+            HttpResponse response = client.execute(request);
+            if (jsession == null)
+            {
+                jsession = response.getFirstHeader("Set-Cookie").getValue();
+                jsession = CookieParser.getInstance().getSpecialCookie(jsession, "JSESSIONID");
+            }
+
+            String csrf = findCsrf(response.getEntity());
+
+            return new JSessionCsrfPair(jsession, csrf);
+        }
+        catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private String findCsrf(HttpEntity entity)
+    {
+        final String csrfLocation = "name=\"_csrf\" content=\"";
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(entity.getContent())))
+        {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                int loc = line.indexOf(csrfLocation);
+                if (loc > 0) {
+                    line = line.substring(loc + csrfLocation.length());
+                    return line.substring(0, line.indexOf("\""));
+                }
+            }
+            throw new RuntimeException("csrf not found");
+        }
+        catch (IOException e)
+        {
+            throw new RuntimeException(e);
         }
     }
 

@@ -1,7 +1,7 @@
 package de.neuland.hybris.http;
 
 import com.bethecoder.ascii_table.ASCIITable;
-import de.neuland.hybris.http.helper.CookieParser;
+import de.neuland.hybris.http.helper.JSessionCsrfPair;
 import org.apache.http.NameValuePair;
 import org.apache.http.message.BasicNameValuePair;
 import org.json.JSONArray;
@@ -17,6 +17,8 @@ public class HybrisHTTPRequest {
     private final static String BEANSHELL_CONSOLE_EXECUTE_URL = "/console/beanshell/execute";
     private final static String HYBRIS_5_CONSOLE_EXECUTE_URL = "/console/scripting/execute";
     private final static String HYBRIS_LOGIN_URL = "/j_spring_security_check";
+    private final static String HYBRIS_LOGIN_PAGE_URL = "/login.jsp";
+
     private String serverURL;
     //Variablen für Flexsearch
     private String username;
@@ -49,7 +51,7 @@ public class HybrisHTTPRequest {
     }
 
     public boolean isHybrisVersion5OrAbove() {
-        return hybrisVersion5OrAbove;
+        return true;
     }
 
     public void setHybrisVersion5OrAbove(boolean hybrisVersion5OrAbove) {
@@ -65,7 +67,11 @@ public class HybrisHTTPRequest {
         this.serverURL = serverURL;
     }
 
-    public String executeFlexsearchScript(String script, String jSessionID) {
+    public String getLoginPageUrl() {
+        return serverURL + HYBRIS_LOGIN_PAGE_URL;
+    }
+
+    public String executeFlexsearchScript(String script, JSessionCsrfPair jSessionCsrfPair) {
         HTTPRequestManager httpRequestManager = HTTPRequestManager.getInstance();
         List<NameValuePair> scriptParameter = new ArrayList<NameValuePair>();
         if(isHybrisVersion5OrAbove()) {
@@ -77,10 +83,10 @@ public class HybrisHTTPRequest {
         scriptParameter.add(new BasicNameValuePair("locale", localeISOCode));
         scriptParameter.add(new BasicNameValuePair("maxCount", maxCount));
         scriptParameter.add(new BasicNameValuePair("sqlQuery", ""));
-        return httpRequestManager.doPostRequestWithCookie(serverURL + (isHybrisVersion5OrAbove() ? HYBRIS_5_CONSOLE_EXECUTE_URL : FLEXSEARCH_CONSOLE_EXECUTE_URL), jSessionID, scriptParameter);
+        return httpRequestManager.doPostRequestWithCookie(serverURL + FLEXSEARCH_CONSOLE_EXECUTE_URL, jSessionCsrfPair, scriptParameter);
     }
 
-    public String executeGroovyScript(String script, String jSessionID) {
+    public String executeGroovyScript(String script, JSessionCsrfPair jSessionCsrfPair) {
         HTTPRequestManager httpRequestManager = HTTPRequestManager.getInstance();
         List<NameValuePair> scriptParameter = new ArrayList<NameValuePair>();
         if(isHybrisVersion5OrAbove()) {
@@ -88,10 +94,10 @@ public class HybrisHTTPRequest {
             scriptParameter.add(new BasicNameValuePair("commit", "false"));
         }
         scriptParameter.add(new BasicNameValuePair("script", script));
-        return httpRequestManager.doPostRequestWithCookie(serverURL + (isHybrisVersion5OrAbove() ? HYBRIS_5_CONSOLE_EXECUTE_URL : GROOVY_CONSOLE_EXECUTE_URL), jSessionID, scriptParameter);
+        return httpRequestManager.doPostRequestWithCookie(serverURL + (isHybrisVersion5OrAbove() ? HYBRIS_5_CONSOLE_EXECUTE_URL : GROOVY_CONSOLE_EXECUTE_URL), jSessionCsrfPair, scriptParameter);
     }
 
-    public String executeBeanshellScript(String script, String jSessionID) {
+    public String executeBeanshellScript(String script, JSessionCsrfPair jSessionCsrfPair) {
         HTTPRequestManager httpRequestManager = HTTPRequestManager.getInstance();
         List<NameValuePair> scriptParameter = new ArrayList<NameValuePair>();
         if(isHybrisVersion5OrAbove()) {
@@ -99,21 +105,20 @@ public class HybrisHTTPRequest {
             scriptParameter.add(new BasicNameValuePair("commit", "false"));
         }
         scriptParameter.add(new BasicNameValuePair("script", script));
-        return httpRequestManager.doPostRequestWithCookie(serverURL + (isHybrisVersion5OrAbove() ? HYBRIS_5_CONSOLE_EXECUTE_URL : BEANSHELL_CONSOLE_EXECUTE_URL), jSessionID, scriptParameter);
+        return httpRequestManager.doPostRequestWithCookie(serverURL + (isHybrisVersion5OrAbove() ? HYBRIS_5_CONSOLE_EXECUTE_URL : BEANSHELL_CONSOLE_EXECUTE_URL), jSessionCsrfPair, scriptParameter);
     }
 
-    public String getJSessionID(String username, String password) {
+    public JSessionCsrfPair getJSessionIDAndCsrf(String username, String password) {
         HTTPRequestManager httpRequestManager = HTTPRequestManager.getInstance();
         httpRequestManager.setUsername(username);
         httpRequestManager.setPassword(password);
-        return getJSessionID();
+        return getJSessionIDAndCsrf();
     }
 
-    public String getJSessionID() {
+    public JSessionCsrfPair getJSessionIDAndCsrf() {
         HTTPRequestManager httpRequestManager = HTTPRequestManager.getInstance();
         List<NameValuePair> loginParameterPair = httpRequestManager.createLoginDataPair("j_username","j_password");
-        String cookieString = httpRequestManager.doLoginForCookie(serverURL + HYBRIS_LOGIN_URL, loginParameterPair);
-        return CookieParser.getInstance().getSpecialCookie(cookieString, "JSESSIONID");
+        return httpRequestManager.doLoginForCookie(serverURL + HYBRIS_LOGIN_URL, loginParameterPair);
     }
 
     public String getHybrisConsoleOutput(String json, ServerAnwserTypes type) {

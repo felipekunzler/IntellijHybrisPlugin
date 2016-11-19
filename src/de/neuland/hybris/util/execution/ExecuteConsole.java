@@ -8,8 +8,8 @@ import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
 import de.neuland.hybris.http.HybrisHTTPRequest;
+import de.neuland.hybris.http.helper.JSessionCsrfPair;
 
-import javax.swing.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -68,7 +68,7 @@ public abstract class ExecuteConsole {
         }
     }
 
-    protected String executePrepare(Project project) {
+    protected JSessionCsrfPair executePrepare(Project project) {
         HybrisHTTPRequest hybrisHttpRequest = HybrisHTTPRequest.getInstance();
         if(!hybrisHttpRequest.isHybrisServerURLSet()) {
             String hybrisURL = Messages.showInputDialog(project, "Hybris URL, e.g. http://localhost:9001", "Input the Hybris URL", Messages.getQuestionIcon());
@@ -79,18 +79,18 @@ public abstract class ExecuteConsole {
                 return null;
             }
         }
-        String jSessionID;
+        JSessionCsrfPair jSessionCsrfPair;
         if(!hybrisHttpRequest.isUserdataSet()) {
             String hacUsername = Messages.showInputDialog(project, "HAC Username", "HAC Username", Messages.getQuestionIcon());
             String hacPassword = Messages.showPasswordDialog(project, "HAC Password", "HAC Password", Messages.getQuestionIcon());
             if(hacUsername != null && hacPassword != null) {
-                jSessionID = hybrisHttpRequest.getJSessionID(hacUsername, hacPassword);
+                jSessionCsrfPair = hybrisHttpRequest.getJSessionIDAndCsrf(hacUsername, hacPassword);
             } else {
                 Messages.showMessageDialog(project, "Server request aborted. Caused by an invalid login data", "Error", Messages.getErrorIcon());
                 return null;
             }
         } else {
-            jSessionID = hybrisHttpRequest.getJSessionID();
+            jSessionCsrfPair = hybrisHttpRequest.getJSessionIDAndCsrf();
         }
 
         if(consoleViewList.isEmpty()) {
@@ -98,7 +98,7 @@ public abstract class ExecuteConsole {
         }
 
         clearConsole();
-        return jSessionID;
+        return jSessionCsrfPair;
     }
 
     protected ConsoleView createConsole(Project project) {
