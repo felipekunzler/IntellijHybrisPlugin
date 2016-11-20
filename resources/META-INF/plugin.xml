@@ -29,6 +29,11 @@
         <errorHandler implementation="com.intellij.diagnostic.ITNReporter"/>
         <configurationType implementation="de.neuland.hybris.run.action.config.HybrisConfigurationType"/>
         <programRunner implementation="de.neuland.hybris.run.action.runner.HybrisRunProgrammRunner"/>
+        <fileTypeFactory implementation="de.neuland.hybris.language.flexiblesearch.FlexSearchTypeFactory"/>
+        <lang.parserDefinition language="FlexSearch"
+                               implementationClass="com.intellij.openapi.fileTypes.PlainTextParserDefinition"/>
+        
+        
     </extensions>
 
 </idea-plugin>
