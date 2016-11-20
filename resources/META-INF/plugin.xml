@@ -15,7 +15,7 @@
   </description>
 
   <!-- Plugin version -->
-  <version>1.2.4</version>
+  <version>2.0.1</version>
 
   <!-- Plugin's vendor -->
   <vendor>neuland Bremen GmbH</vendor>
@@ -23,7 +23,13 @@
   <!-- Plugin's application components -->
     <idea-version since-build="133"/>
 
-
+    <actions>
+        <action id="Hybris.GenerateBean" class="de.neuland.hybris.language.groovy.action.GenerateBeanAction" text="Generate Bean Action"
+                description="Generate Bean Action">
+            <keyboard-shortcut keymap="$default" first-keystroke="ctrl shift J" />
+        </action>
+    </actions>
+    
   <!-- Component's actions -->
     <extensions defaultExtensionNs="com.intellij">
         <errorHandler implementation="com.intellij.diagnostic.ITNReporter"/>
